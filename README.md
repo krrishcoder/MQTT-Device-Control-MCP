@@ -49,6 +49,15 @@ Example intent mapping:
    python server.py
    ```
 
+### Local transport notes
+
+- Default transport is `stdio` (good for local MCP clients).
+- For cloud/web hosting (Render), use:
+
+   ```bash
+   MCP_TRANSPORT=streamable-http python server.py
+   ```
+
 ## Tools exposed
 
 - `control_bulb(action)`
@@ -67,3 +76,15 @@ Example intent mapping:
 - Keep `.env` private. Do not commit credentials.
 - Rotate broker password if it was shared publicly.
 - ESP32 should subscribe to the same control topic configured here.
+
+## Deploy on Render (important)
+
+If Render shows **"Application exited early"**, it usually means the server was
+started in `stdio` mode and then exited (no stdio client attached).
+
+Use Streamable HTTP mode on Render:
+
+- `MCP_TRANSPORT=streamable-http`
+- The app auto-binds to `0.0.0.0:$PORT`
+
+This is already configured in [render.yaml](render.yaml).

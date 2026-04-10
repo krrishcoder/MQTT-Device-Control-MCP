@@ -27,7 +27,12 @@ MQTT_CONTROL_TOPIC = os.getenv("MQTT_CONTROL_TOPIC", "home/bulb/control")
 MQTT_STATUS_TOPIC = os.getenv("MQTT_STATUS_TOPIC", "home/bulb/status")
 MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "true").lower() in {"1", "true", "yes"}
 
-mcp = FastMCP("mqtt-bulb-mcp")
+# MCP transport/runtime config
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio")
+MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
+MCP_PORT = int(os.getenv("PORT", os.getenv("MCP_PORT", "8000")))
+
+mcp = FastMCP("mqtt-bulb-mcp", host=MCP_HOST, port=MCP_PORT)
 
 
 def _validate_base_config() -> None:
@@ -121,5 +126,7 @@ def get_config() -> dict[str, Any]:
 if __name__ == "__main__":
     print("Starting SmartHome Lighting MCP Gateway...", flush=True)
     print(f"MQTT host: {MQTT_HOST}:{MQTT_PORT}", flush=True)
+    print(f"MCP transport: {MCP_TRANSPORT}", flush=True)
+    print(f"MCP bind: {MCP_HOST}:{MCP_PORT}", flush=True)
     print("MCP server is ready and waiting for client requests.", flush=True)
-    mcp.run()
+    mcp.run(transport=MCP_TRANSPORT)
