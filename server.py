@@ -28,7 +28,7 @@ MQTT_STATUS_TOPIC = os.getenv("MQTT_STATUS_TOPIC", "home/bulb/status")
 MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "true").lower() in {"1", "true", "yes"}
 
 # MCP transport/runtime config
-MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio")
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "streamable-http" if os.getenv("PORT") else "stdio")
 MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.getenv("PORT", os.getenv("MCP_PORT", "8000")))
 
