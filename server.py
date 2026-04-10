@@ -119,4 +119,7 @@ def get_config() -> dict[str, Any]:
 
 
 if __name__ == "__main__":
+    print("Starting SmartHome Lighting MCP Gateway...", flush=True)
+    print(f"MQTT host: {MQTT_HOST}:{MQTT_PORT}", flush=True)
+    print("MCP server is ready and waiting for client requests.", flush=True)
     mcp.run()
