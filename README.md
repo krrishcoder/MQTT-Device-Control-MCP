@@ -2,6 +2,9 @@
 
 MCP server with tools to control an ESP32 bulb via MQTT (HiveMQ Cloud compatible).
 
+# Architecture
+![Screenshot](IOT-1.png)
+
 ## What this server does
 
 - Exposes MCP tools for light control.
