@@ -1,1 +1,129 @@
 
+
+
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <PubSubClient.h>
+
+// ====== USER CONFIG ======
+const char* WIFI_SSID = "___";
+const char* WIFI_PASSWORD = "____";
+
+// HiveMQ Cloud broker (TLS)
+const char* MQTT_BROKER = "broker url";
+const uint16_t MQTT_PORT = 8883;
+const char* MQTT_CLIENT_ID = "_____";
+const char* MQTT_USER = "____";
+const char* MQTT_PASS = "_____";
+
+// Topic used by your MCP server/tool to control bulb
+const char* TOPIC_CONTROL = "home/bulb/control"; // payload: ON | OFF | 1 | 0
+const char* TOPIC_STATUS = "home/bulb/status";   // publishes current state
+
+// GPIO connected to relay/transistor that drives bulb
+const int BULB_PIN = 2;
+// =========================
+
+WiFiClientSecure espClient;
+PubSubClient mqttClient(espClient);
+
+bool bulbState = false;
+unsigned long lastReconnectAttempt = 0;
+
+void setBulb(bool on) {
+  bulbState = on;
+  digitalWrite(BULB_PIN, on ? HIGH : LOW);
+  mqttClient.publish(TOPIC_STATUS, on ? "ON" : "OFF", true);
+  Serial.printf("Bulb: %s\n", on ? "ON" : "OFF");
+}
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+  String msg;
+  msg.reserve(length);
+
+  for (unsigned int i = 0; i < length; i++) {
+    msg += static_cast<char>(payload[i]);
+  }
+  msg.trim();
+  msg.toUpperCase();
+
+  Serial.printf("MQTT [%s]: %s\n", topic, msg.c_str());
+
+  if (String(topic) == TOPIC_CONTROL) {
+    if (msg == "ON" || msg == "1" || msg == "TRUE") {
+      setBulb(true);
+    } else if (msg == "OFF" || msg == "0" || msg == "FALSE") {
+      setBulb(false);
+    }
+  }
+}
+
+void connectWiFi() {
+  if (WiFi.status() == WL_CONNECTED) {
+    return;
+  }
+
+  Serial.printf("Connecting Wi-Fi: %s\n", WIFI_SSID);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.print("Wi-Fi connected. IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+bool connectMQTT() {
+  if (mqttClient.connected()) {
+    return true;
+  }
+
+  Serial.printf("Connecting MQTT: %s:%u\n", MQTT_BROKER, MQTT_PORT);
+
+  if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASS)) {
+    Serial.println("MQTT connected");
+    mqttClient.subscribe(TOPIC_CONTROL, 1);
+    mqttClient.publish(TOPIC_STATUS, bulbState ? "ON" : "OFF", true);
+    return true;
+  }
+
+  Serial.printf("MQTT connect failed, state=%d\n", mqttClient.state());
+  return false;
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BULB_PIN, OUTPUT);
+  digitalWrite(BULB_PIN, LOW);
+
+  connectWiFi();
+
+  // Quick-start TLS mode for HiveMQ Cloud.
+  // For production, use certificate validation with setCACert(...).
+  espClient.setInsecure();
+
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setCallback(mqttCallback);
+}
+
+void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    connectWiFi();
+  }
+
+  if (!mqttClient.connected()) {
+    unsigned long now = millis();
+    if (now - lastReconnectAttempt > 3000) {
+      lastReconnectAttempt = now;
+      connectMQTT();
+    }
+  } else {
+    mqttClient.loop();
+  }
+}
